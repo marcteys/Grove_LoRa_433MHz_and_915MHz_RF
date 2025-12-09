@@ -5,7 +5,7 @@
 // It is designed to work with the other examples rf95_mesh_address*
 // Hint: you can simulate other network topologies by setting the
 // RH_TEST_NETWORK define in RHRouter.h
-#include "RH_RF95.h"
+#include <RH_RF95.h>
 
 #ifdef __AVR__  
     #include <SoftwareSerial.h>
@@ -61,7 +61,7 @@
 
 
 
-#include "RHMesh.h"
+#include <RHMesh.h>
 
 // Mesh has much greater memory requirements, and you may need to limit the
 // max message length to prevent wierd crashes
