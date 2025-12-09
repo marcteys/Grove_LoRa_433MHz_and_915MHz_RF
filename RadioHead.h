@@ -663,6 +663,7 @@
 #define RH_PLATFORM_NRF51            10
 #define RH_PLATFORM_ESP8266          11
 #define RH_PLATFORM_STM32F2          12
+#define RH_PLATFORM_ESP32            13
 
 ////////////////////////////////////////////////////
 // Select platform automatically, if possible
@@ -671,6 +672,8 @@
         #define RH_PLATFORM RH_PLATFORM_UNO32
     #elif defined(NRF51)
         #define RH_PLATFORM RH_PLATFORM_NRF51
+    #elif defined(ESP32)
+        #define RH_PLATFORM RH_PLATFORM_ESP32
     #elif defined(ESP8266)
         #define RH_PLATFORM RH_PLATFORM_ESP8266
     #elif defined(ARDUINO)
@@ -715,6 +718,11 @@
     #endif
 
 #elif (RH_PLATFORM == RH_PLATFORM_ESP8266) // ESP8266 processor on Arduino IDE
+    #include <Arduino.h>
+    #include <SPI.h>
+    #define RH_HAVE_HARDWARE_SPI
+    #define RH_HAVE_SERIAL
+#elif (RH_PLATFORM == RH_PLATFORM_ESP32) // ESP32 processor on Arduino IDE
     #include <Arduino.h>
     #include <SPI.h>
     #define RH_HAVE_HARDWARE_SPI
@@ -814,8 +822,7 @@
     #if defined(__arm__)
         #include <RHutil/atomic.h>
     #else
-        // #include <util/atomic.h>
-        #include <stdatomic.h>
+        #include <util/atomic.h>
     #endif
     #define ATOMIC_BLOCK_START     ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
     #define ATOMIC_BLOCK_END }
@@ -830,6 +837,10 @@
     // See hardware/esp8266/2.0.0/cores/esp8266/Arduino.h
     #define ATOMIC_BLOCK_START { uint32_t __savedPS = xt_rsil(15);
     #define ATOMIC_BLOCK_END xt_wsr_ps(__savedPS);}
+#elif (RH_PLATFORM == RH_PLATFORM_ESP32)
+    // ESP32 uses FreeRTOS critical sections
+    #define ATOMIC_BLOCK_START { portMUX_TYPE __mux = portMUX_INITIALIZER_UNLOCKED; portENTER_CRITICAL(&__mux);
+    #define ATOMIC_BLOCK_END portEXIT_CRITICAL(&__mux); }
 #else
     // TO BE DONE:
     #define ATOMIC_BLOCK_START
@@ -844,6 +855,9 @@
     #define YIELD yield();
 #elif (RH_PLATFORM == RH_PLATFORM_ESP8266)
     // ESP8266 also hash it
+    #define YIELD yield();
+#elif (RH_PLATFORM == RH_PLATFORM_ESP32)
+    // ESP32 also has yield
     #define YIELD yield();
 #else
     #define YIELD

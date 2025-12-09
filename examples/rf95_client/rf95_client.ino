@@ -5,11 +5,18 @@
 // reliability, so you should only use RH_RF95 if you do not need the higher
 // level messaging abilities.
 // It is designed to work with the other example rf95_server
-// Tested with Anarduino MiniWirelessLoRa
+// Tested with Anarduino MiniWirelessLoRa, ESP32, Arduino Uno R4
 
 #include <RH_RF95.h>
 
-#ifdef __AVR__  
+#if defined(ARDUINO_UNOR4_MINIMA) || defined(ARDUINO_UNOR4_WIFI)
+    // Arduino Uno R4 (Minima or WiFi): Use Serial1 hardware UART
+    // Serial1 uses pins D0 (RX) and D1 (TX)
+    #define COMSerial Serial1
+    #define ShowSerial Serial
+
+    RH_RF95<HardwareSerial> rf95(COMSerial);
+#elif defined(__AVR__)
     #include <SoftwareSerial.h>
     SoftwareSerial SSerial(5, 6); // RX, TX
     #define COMSerial SSerial
@@ -18,29 +25,7 @@
     RH_RF95<SoftwareSerial> rf95(COMSerial);
 #endif
 
-#if defined(ARDUINO_ARCH_RP2040) || defined(ARDUINO_ARCH_RP2350) ||  defined(ARDUINO_XIAO_RA4M1) 
-    #include <SoftwareSerial.h>
-    SoftwareSerial SSerial(D7, D6); // RX, TX
-    #define COMSerial SSerial
-    #define ShowSerial Serial
-
-    RH_RF95<SoftwareSerial> rf95(COMSerial);
-#endif
-
-#if  defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32C6) || defined(CONFIG_IDF_TARGET_ESP32S3)
-    #define COMSerial Serial1
-    #define ShowSerial Serial
-
-    RH_RF95<HardwareSerial> rf95(COMSerial);
-#endif
-
-
-#ifdef SEEED_XIAO_M0
-    #define COMSerial Serial1
-    #define ShowSerial Serial
-
-    RH_RF95<Uart> rf95(COMSerial);
-#elif defined(ARDUINO_SAMD_VARIANT_COMPLIANCE)
+#ifdef ARDUINO_SAMD_VARIANT_COMPLIANCE
     #define COMSerial Serial1
     #define ShowSerial SerialUSB
 
@@ -54,11 +39,13 @@
     RH_RF95<HardwareSerial> rf95(COMSerial);
 #endif
 
-#if defined(NRF52840_XXAA)
+#ifdef ESP32
+    // ESP32: Use Serial1 for LoRa module (default pins: RX=9, TX=10)
+    // You can reassign pins with Serial1.begin(baud, SERIAL_8N1, RX_PIN, TX_PIN)
     #define COMSerial Serial1
     #define ShowSerial Serial
 
-    RH_RF95<Uart> rf95(COMSerial);
+    RH_RF95<HardwareSerial> rf95(COMSerial);
 #endif
 
 
@@ -66,12 +53,32 @@
 
 void setup() {
     ShowSerial.begin(115200);
+
+    #if defined(ARDUINO_UNOR4_MINIMA) || defined(ARDUINO_UNOR4_WIFI)
+        // Arduino Uno R4: Initialize Serial1 for LoRa module communication
+        // Serial1 uses pins D0 (RX) and D1 (TX)
+        COMSerial.begin(57600);
+        delay(100); // Give serial time to initialize
+    #elif defined(ESP32)
+        // ESP32: Initialize Serial1 for LoRa module communication
+        // Using GPIO16 (RX) and GPIO17 (TX) - more commonly available on ESP32 boards
+        // GPIO9/GPIO10 are often connected to flash and may not work
+        COMSerial.begin(57600, SERIAL_8N1, 16, 17); // RX=GPIO16, TX=GPIO17
+        delay(100); // Give serial time to initialize
+
+        ShowSerial.println("ESP32 Serial1 initialized on GPIO16(RX)/GPIO17(TX)");
+    #endif
+
     ShowSerial.println("RF95 client test.");
+    ShowSerial.println("Initializing LoRa module...");
 
     if (!rf95.init()) {
         ShowSerial.println("init failed");
+        ShowSerial.println("Check: 1) Grove module powered? 2) RX/TX pins connected? 3) Grove firmware loaded?");
         while (1);
     }
+
+    ShowSerial.println("LoRa module initialized successfully!");
 
     // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
 
